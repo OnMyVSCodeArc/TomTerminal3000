@@ -1,13 +1,44 @@
 import os
 import shutil
+import json
+import hashlib
 from datetime import datetime
 from sympy import sympify
 
+STORAGE_DIR = os.path.join(os.path.expanduser("~"), "Documents", "TomFolder3000")
+CACHE_FILENAME = ".terminal_cache.json"
+CACHE_FILE = os.path.join(STORAGE_DIR, CACHE_FILENAME)
+
 current_user = "shell"
+accounts = {"shell": None}
 user_list = ["shell"]
 command_history = []
 
-STORAGE_DIR = os.path.join(os.path.expanduser("~"), "Documents", "TomFolder3000")
+def _hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def load_cache():
+    global current_user, accounts, user_list
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+
+    if os.path.isfile(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            current_user = data.get("current_user", "shell")
+            accounts = data.get("accounts", {"shell": None})
+            user_list = list(accounts.keys())
+            return
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    save_cache()
+
+def save_cache():
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump({"current_user": current_user, "accounts": accounts}, f, indent=2)
+
+load_cache()
 
 def create_file(args_string):
     parts = args_string.split(maxsplit=1)
@@ -25,12 +56,15 @@ def create_file(args_string):
 
     return f"Created file '{filename}' successfully in '{STORAGE_DIR}'."
 
+def _visible_files():
+    return [f for f in os.listdir(STORAGE_DIR) if f != CACHE_FILENAME]
+
 def list_files():
-    if not os.path.isdir(STORAGE_DIR) or not os.listdir(STORAGE_DIR):
+    if not os.path.isdir(STORAGE_DIR) or not _visible_files():
         return "TomFolder3000's Files:\n(empty)"
 
     output = "TomFolder3000's Files:\n"
-    for filename in os.listdir(STORAGE_DIR):
+    for filename in _visible_files():
         filepath = os.path.join(STORAGE_DIR, filename)
         created = datetime.fromtimestamp(os.path.getctime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
         output += f"{filename} ({created})\n"
@@ -39,7 +73,7 @@ def list_files():
 def view_file(filename):
     filepath = os.path.join(STORAGE_DIR, filename)
 
-    if not os.path.isfile(filepath):
+    if filename == CACHE_FILENAME or not os.path.isfile(filepath):
         return f"Error: File '{filename}' not found."
 
     try:
@@ -56,7 +90,7 @@ def calculate(expression_string):
 
 def delete_file(filename):
     filepath = os.path.join(STORAGE_DIR, filename)
-    if os.path.isfile(filepath):
+    if filename != CACHE_FILENAME and os.path.isfile(filepath):
         os.remove(filepath)
         return f"Deleted file '{filename}' successfully."
     else:
@@ -86,7 +120,7 @@ def get_path():
 def open_file(filename):
     filepath = os.path.join(STORAGE_DIR, filename)
 
-    if not os.path.isfile(filepath):
+    if filename == CACHE_FILENAME or not os.path.isfile(filepath):
         return f"Error: File '{filename}' not found."
 
     try:
@@ -105,8 +139,10 @@ def copy_file(args_string):
     src_path = os.path.join(STORAGE_DIR, src)
     dest_path = os.path.join(STORAGE_DIR, dest)
 
-    if not os.path.isfile(src_path):
+    if src == CACHE_FILENAME or not os.path.isfile(src_path):
         return f"Error: File '{src}' not found."
+    if dest == CACHE_FILENAME:
+        return f"Error: '{dest}' is a reserved filename."
 
     shutil.copy(src_path, dest_path)
     return f"Copied '{src}' to '{dest}'."
@@ -121,8 +157,10 @@ def rename_file(args_string):
     old_path = os.path.join(STORAGE_DIR, old)
     new_path = os.path.join(STORAGE_DIR, new)
 
-    if not os.path.isfile(old_path):
+    if old == CACHE_FILENAME or not os.path.isfile(old_path):
         return f"Error: File '{old}' not found."
+    if new == CACHE_FILENAME:
+        return f"Error: '{new}' is a reserved filename."
     if os.path.exists(new_path):
         return f"Error: File '{new}' already exists."
 
@@ -132,7 +170,7 @@ def rename_file(args_string):
 def get_size(filename):
     filepath = os.path.join(STORAGE_DIR, filename)
 
-    if not os.path.isfile(filepath):
+    if filename == CACHE_FILENAME or not os.path.isfile(filepath):
         return f"Error: File '{filename}' not found."
 
     size_bytes = os.path.getsize(filepath)
@@ -141,11 +179,11 @@ def get_size(filename):
     return f"{filename}: {size_bytes / 1024:.2f} KB"
 
 def search_files(keyword):
-    if not os.path.isdir(STORAGE_DIR) or not os.listdir(STORAGE_DIR):
+    if not os.path.isdir(STORAGE_DIR) or not _visible_files():
         return "No files to search."
 
     matches = []
-    for filename in os.listdir(STORAGE_DIR):
+    for filename in _visible_files():
         filepath = os.path.join(STORAGE_DIR, filename)
         if keyword.lower() in filename.lower():
             matches.append(filename)
@@ -168,9 +206,35 @@ def search_files(keyword):
 def account(newaccount):
     global current_user
     current_user = newaccount
-    if newaccount not in user_list:
+    if newaccount not in accounts:
+        accounts[newaccount] = None
         user_list.append(newaccount)
+    save_cache()
     return f"Switched to account '{newaccount}'"
+
+def set_password(args_string):
+    parts = args_string.split(" ")
+
+    if len(parts) != 3:
+        return "Error: Use 'password <user> <old password> <new password>' (leave old password blank if none is set)."
+
+    username, old_password, new_password = parts
+
+    if not username or not new_password:
+        return "Error: Use 'password <user> <old password> <new password>' (leave old password blank if none is set)."
+    if username not in accounts:
+        return f"Error: Account '{username}' does not exist."
+
+    stored_hash = accounts[username]
+    if stored_hash is None:
+        if old_password != "":
+            return "Error: Incorrect old password."
+    elif _hash_password(old_password) != stored_hash:
+        return "Error: Incorrect old password."
+
+    accounts[username] = _hash_password(new_password)
+    save_cache()
+    return f"Password updated for account '{username}'."
 
 def help():
     return (
@@ -191,6 +255,8 @@ def help():
         "  history              - Show previously entered commands\n"
         "  clear                - Clear the terminal screen\n"
         "  account <name>       - Switch to a different account\n"
+        "  password <user> <old password> <new password> - Change an account's password\n"
+        "                         (leave old password blank if none is set)\n"
         "  me                   - Print the current username (whoami)\n"
         "  users                - List all accounts created\n"
         "  exit                 - Exit the terminal\n"

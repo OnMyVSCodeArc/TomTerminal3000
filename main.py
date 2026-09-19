@@ -122,5 +122,12 @@ while True:
             response = commands.search_files(args)
             print(response)
 
+    elif cmd == "password":
+        if not args:
+            print("Error: Missing arguments.")
+        else:
+            response = commands.set_password(args)
+            print(response)
+
     else:
         print(f"Unknown command: '{cmd}'")

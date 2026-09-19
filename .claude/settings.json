@@ -4,6 +4,9 @@
       "Bash(PYTHONIOENCODING=utf-8 python main.py)",
       "Read(//c/Users/Tom/Documents/TomFolder3000/**)",
       "Read(//c/Users/Tom/Documents/TomFolder3000//**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Tom\\Documents\\TomFolder3000"
     ]
   }
 }

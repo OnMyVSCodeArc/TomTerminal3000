@@ -203,6 +203,18 @@ def search_files(keyword):
         output += f"{filename}\n"
     return output.strip()
 
+def account_exists(username):
+    return username in accounts
+
+def account_has_password(username):
+    return accounts.get(username) is not None
+
+def verify_password(username, password):
+    stored_hash = accounts.get(username)
+    if stored_hash is None:
+        return True
+    return _hash_password(password) == stored_hash
+
 def account(newaccount):
     global current_user
     current_user = newaccount
@@ -212,25 +224,18 @@ def account(newaccount):
     save_cache()
     return f"Switched to account '{newaccount}'"
 
-def set_password(args_string):
-    parts = args_string.split(" ")
-
-    if len(parts) != 3:
-        return "Error: Use 'password <user> <old password> <new password>' (leave old password blank if none is set)."
-
-    username, old_password, new_password = parts
-
-    if not username or not new_password:
-        return "Error: Use 'password <user> <old password> <new password>' (leave old password blank if none is set)."
-    if username not in accounts:
-        return f"Error: Account '{username}' does not exist."
-
+def set_password(old_password, new_password):
+    username = current_user
     stored_hash = accounts[username]
+
     if stored_hash is None:
         if old_password != "":
             return "Error: Incorrect old password."
     elif _hash_password(old_password) != stored_hash:
         return "Error: Incorrect old password."
+
+    if not new_password:
+        return "Error: New password cannot be empty."
 
     accounts[username] = _hash_password(new_password)
     save_cache()
@@ -255,8 +260,7 @@ def help():
         "  history              - Show previously entered commands\n"
         "  clear                - Clear the terminal screen\n"
         "  account <name>       - Switch to a different account\n"
-        "  password <user> <old password> <new password> - Change an account's password\n"
-        "                         (leave old password blank if none is set)\n"
+        "  password             - Change the current account's password (interactive prompts)\n"
         "  me                   - Print the current username (whoami)\n"
         "  users                - List all accounts created\n"
         "  exit                 - Exit the terminal\n"

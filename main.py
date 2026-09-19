@@ -1,4 +1,11 @@
+import sys
+import getpass
 import commands
+
+def prompt_password(prompt):
+    if sys.stdin.isatty():
+        return getpass.getpass(prompt)
+    return input(prompt)
 
 while True:
     user_input = input(commands.current_user + " >> ").strip()
@@ -57,6 +64,12 @@ while True:
     elif cmd == "account":
         if not args:
             print("Error: Missing account name.")
+        elif commands.account_exists(args) and commands.account_has_password(args):
+            entered_password = prompt_password("Password: ")
+            if commands.verify_password(args, entered_password):
+                print(commands.account(args))
+            else:
+                print("Error: Incorrect password.")
         else:
             response = commands.account(args)
             print(response)
@@ -123,10 +136,13 @@ while True:
             print(response)
 
     elif cmd == "password":
-        if not args:
-            print("Error: Missing arguments.")
+        old_password = prompt_password("Enter your old password: ")
+        new_password = prompt_password("Enter your new password: ")
+        confirm_password = prompt_password("Confirm your new password: ")
+        if new_password != confirm_password:
+            print("Error: New passwords do not match.")
         else:
-            response = commands.set_password(args)
+            response = commands.set_password(old_password, new_password)
             print(response)
 
     else:

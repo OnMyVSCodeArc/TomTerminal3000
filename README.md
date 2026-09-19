@@ -1,7 +1,4 @@
 # TomTerminal3000
-
-A fake terminal / shell simulator written in Python. It gives you a command prompt with its own file storage, accounts, and utilities — all running locally, no real shell access.
-
 > **Status:** In development (indev). Commands and storage format may still change between releases.
 
 ## Requirements

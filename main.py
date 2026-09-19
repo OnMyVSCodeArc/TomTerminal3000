@@ -10,6 +10,9 @@ while True:
     cmd = tokens[0]
     args = tokens[1] if len(tokens) > 1 else ""
 
+    if cmd != "history":
+        commands.record_history(user_input)
+
     if cmd == "show":
         if not args:
             print("Error: Nothing to show.")
@@ -71,5 +74,53 @@ while True:
         print("Available users:")
         for user in commands.user_list:
             print(f"  - {user}")
+
+    elif cmd == "date":
+        print(commands.get_date())
+
+    elif cmd == "clear":
+        commands.clear_screen()
+
+    elif cmd == "history":
+        print(commands.get_history())
+
+    elif cmd == "path":
+        print(commands.get_path())
+
+    elif cmd == "open":
+        if not args:
+            print("Error: Missing filename.")
+        else:
+            response = commands.open_file(args)
+            print(response)
+
+    elif cmd == "copy":
+        if not args:
+            print("Error: Missing source and destination filenames.")
+        else:
+            response = commands.copy_file(args)
+            print(response)
+
+    elif cmd == "rename":
+        if not args:
+            print("Error: Missing old and new filenames.")
+        else:
+            response = commands.rename_file(args)
+            print(response)
+
+    elif cmd == "size":
+        if not args:
+            print("Error: Missing filename.")
+        else:
+            response = commands.get_size(args)
+            print(response)
+
+    elif cmd == "search":
+        if not args:
+            print("Error: Missing search keyword.")
+        else:
+            response = commands.search_files(args)
+            print(response)
+
     else:
         print(f"Unknown command: '{cmd}'")

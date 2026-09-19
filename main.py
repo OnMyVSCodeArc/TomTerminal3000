@@ -135,6 +135,9 @@ while True:
             response = commands.search_files(args)
             print(response)
 
+    elif cmd == "signout":
+        print(commands.sign_out())
+
     elif cmd == "password":
         old_password = prompt_password("Enter your old password: ")
         new_password = prompt_password("Enter your new password: ")

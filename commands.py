@@ -9,9 +9,11 @@ STORAGE_DIR = os.path.join(os.path.expanduser("~"), "Documents", "TomFolder3000"
 CACHE_FILENAME = ".terminal_cache.json"
 CACHE_FILE = os.path.join(STORAGE_DIR, CACHE_FILENAME)
 
-current_user = "shell"
-accounts = {"shell": None}
-user_list = ["shell"]
+SHELL_USER = "shell"
+
+current_user = SHELL_USER
+accounts = {}
+user_list = []
 command_history = []
 
 def _hash_password(password):
@@ -25,8 +27,9 @@ def load_cache():
         try:
             with open(CACHE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            current_user = data.get("current_user", "shell")
-            accounts = data.get("accounts", {"shell": None})
+            current_user = data.get("current_user", SHELL_USER)
+            accounts = data.get("accounts", {})
+            accounts.pop(SHELL_USER, None)
             user_list = list(accounts.keys())
             return
         except (json.JSONDecodeError, OSError):
@@ -218,15 +221,23 @@ def verify_password(username, password):
 def account(newaccount):
     global current_user
     current_user = newaccount
-    if newaccount not in accounts:
+    if newaccount != SHELL_USER and newaccount not in accounts:
         accounts[newaccount] = None
         user_list.append(newaccount)
     save_cache()
     return f"Switched to account '{newaccount}'"
 
+def sign_out():
+    account(SHELL_USER)
+    return "Signed out. You are now on the temporary 'shell' session."
+
 def set_password(old_password, new_password):
     username = current_user
-    stored_hash = accounts[username]
+
+    if username == SHELL_USER:
+        return "Error: 'shell' is a temporary session, not an account. Use 'account <name>' to create one first."
+
+    stored_hash = accounts.get(username)
 
     if stored_hash is None:
         if old_password != "":
@@ -259,7 +270,8 @@ def help():
         "  date                 - Show the current date and time\n"
         "  history              - Show previously entered commands\n"
         "  clear                - Clear the terminal screen\n"
-        "  account <name>       - Switch to a different account\n"
+        "  account <name>       - Switch to (or create) an account\n"
+        "  signout              - Sign out to the temporary 'shell' session\n"
         "  password             - Change the current account's password (interactive prompts)\n"
         "  me                   - Print the current username (whoami)\n"
         "  users                - List all accounts created\n"

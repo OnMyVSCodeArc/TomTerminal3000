@@ -26,6 +26,13 @@ while True:
     elif cmd == "list":
         response = commands.list_files()
         print(response)
+
+    elif cmd == "view":
+        if not args:
+            print("Error: Missing filename.")
+        else:
+            response = commands.view_file(args)
+            print(response)
         
     elif cmd == "expr":
         if not args:

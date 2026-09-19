@@ -1,29 +1,50 @@
+import os
+from datetime import datetime
 from sympy import sympify
 
-virtual_drive = {}
 current_user = "shell"
 user_list = ["shell"]
 
+STORAGE_DIR = os.path.join(os.path.expanduser("~"), "Documents", "TomFolder3000")
+
 def create_file(args_string):
     parts = args_string.split(maxsplit=1)
-    
+
     if len(parts) < 2:
         return "Error: Use 'create <filename> <content>'"
-        
+
     filename = parts[0]
     content = parts[1]
-    
-    virtual_drive[filename] = content
-    return f"Created file '{filename}' successfully."
+
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+    filepath = os.path.join(STORAGE_DIR, filename)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    return f"Created file '{filename}' successfully in '{STORAGE_DIR}'."
 
 def list_files():
-    if not virtual_drive:
-        return "[Isolated Zone is empty]"
-    
-    output = "--- Isolated Files ---\n"
-    for filename in virtual_drive.keys():
-        output += f"📄 {filename}\n"
+    if not os.path.isdir(STORAGE_DIR) or not os.listdir(STORAGE_DIR):
+        return "TomFolder3000's Files:\n(empty)"
+
+    output = "TomFolder3000's Files:\n"
+    for filename in os.listdir(STORAGE_DIR):
+        filepath = os.path.join(STORAGE_DIR, filename)
+        created = datetime.fromtimestamp(os.path.getctime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
+        output += f"{filename} ({created})\n"
     return output.strip()
+
+def view_file(filename):
+    filepath = os.path.join(STORAGE_DIR, filename)
+
+    if not os.path.isfile(filepath):
+        return f"Error: File '{filename}' not found."
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+    except UnicodeDecodeError:
+        return f"Error: Cannot view '{filename}' as text (it may be an image, video, or other binary file)."
 
 def calculate(expression_string):
     try:
@@ -32,8 +53,9 @@ def calculate(expression_string):
         return "Error: Invalid math expression."
 
 def delete_file(filename):
-    if filename in virtual_drive:
-        del virtual_drive[filename]
+    filepath = os.path.join(STORAGE_DIR, filename)
+    if os.path.isfile(filepath):
+        os.remove(filepath)
         return f"Deleted file '{filename}' successfully."
     else:
         return f"Error: File '{filename}' not found."
@@ -50,7 +72,8 @@ def help():
         "Available commands:\n"
         "  show <text>          - Print the text\n"
         "  create <filename> <content> - Create a file with content\n"
-        "  list                 - List all files in the memory\n"
+        "  list                 - List all files in TomFolder3000\n"
+        "  view <filename>      - Show the contents of a file\n"
         "  expr <expression>    - Evaluate a math expression\n"
         "  delete <filename>    - Delete a file\n"
         "  account <name>       - Switch to a different account\n"

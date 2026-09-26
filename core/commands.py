@@ -8,6 +8,8 @@ from sympy import sympify
 STORAGE_DIR = os.path.join(os.path.expanduser("~"), "Documents", "TomFolder3000")
 CACHE_FILENAME = ".terminal_cache.json"
 CACHE_FILE = os.path.join(STORAGE_DIR, CACHE_FILENAME)
+ACCOUNTS_DIRNAME = "accounts"
+RESERVED_NAMES = (CACHE_FILENAME, ACCOUNTS_DIRNAME)
 
 SHELL_USER = "shell"
 
@@ -15,6 +17,11 @@ current_user = SHELL_USER
 accounts = {}
 user_list = []
 command_history = []
+
+def _active_dir():
+    if current_user == SHELL_USER:
+        return STORAGE_DIR
+    return os.path.join(STORAGE_DIR, ACCOUNTS_DIRNAME, current_user)
 
 def _hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -52,31 +59,42 @@ def create_file(args_string):
     filename = parts[0]
     content = parts[1]
 
-    os.makedirs(STORAGE_DIR, exist_ok=True)
-    filepath = os.path.join(STORAGE_DIR, filename)
+    if filename in RESERVED_NAMES:
+        return f"Error: '{filename}' is a reserved filename."
+
+    active_dir = _active_dir()
+    os.makedirs(active_dir, exist_ok=True)
+    filepath = os.path.join(active_dir, filename)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
-    return f"Created file '{filename}' successfully in '{STORAGE_DIR}'."
+    return f"Created file '{filename}' successfully in '{active_dir}'."
 
 def _visible_files():
-    return [f for f in os.listdir(STORAGE_DIR) if f != CACHE_FILENAME]
+    active_dir = _active_dir()
+    if not os.path.isdir(active_dir):
+        return []
+    return [f for f in os.listdir(active_dir) if f not in RESERVED_NAMES]
 
 def list_files():
-    if not os.path.isdir(STORAGE_DIR) or not _visible_files():
-        return "TomFolder3000's Files:\n(empty)"
+    files = _visible_files()
+    label = "TomFolder3000's Files" if current_user == SHELL_USER else f"{current_user}'s Private Files"
 
-    output = "TomFolder3000's Files:\n"
-    for filename in _visible_files():
-        filepath = os.path.join(STORAGE_DIR, filename)
+    if not files:
+        return f"{label}:\n(empty)"
+
+    output = f"{label}:\n"
+    active_dir = _active_dir()
+    for filename in files:
+        filepath = os.path.join(active_dir, filename)
         created = datetime.fromtimestamp(os.path.getctime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
         output += f"{filename} ({created})\n"
     return output.strip()
 
 def view_file(filename):
-    filepath = os.path.join(STORAGE_DIR, filename)
+    filepath = os.path.join(_active_dir(), filename)
 
-    if filename == CACHE_FILENAME or not os.path.isfile(filepath):
+    if filename in RESERVED_NAMES or not os.path.isfile(filepath):
         return f"Error: File '{filename}' not found."
 
     try:
@@ -86,10 +104,10 @@ def view_file(filename):
         return f"Error: Cannot view '{filename}' as text (it may be an image, video, or other binary file)."
 
 def read_for_edit(filename):
-    if filename == CACHE_FILENAME:
+    if filename in RESERVED_NAMES:
         return None, f"Error: '{filename}' is a reserved filename."
 
-    filepath = os.path.join(STORAGE_DIR, filename)
+    filepath = os.path.join(_active_dir(), filename)
     if not os.path.isfile(filepath):
         return [], None
 
@@ -100,8 +118,9 @@ def read_for_edit(filename):
         return None, f"Error: Cannot edit '{filename}' as text (it may be an image, video, or other binary file)."
 
 def save_edit(filename, lines):
-    os.makedirs(STORAGE_DIR, exist_ok=True)
-    filepath = os.path.join(STORAGE_DIR, filename)
+    active_dir = _active_dir()
+    os.makedirs(active_dir, exist_ok=True)
+    filepath = os.path.join(active_dir, filename)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     return f"Saved '{filename}' successfully."
@@ -113,8 +132,8 @@ def calculate(expression_string):
         return "Error: Invalid math expression."
 
 def delete_file(filename):
-    filepath = os.path.join(STORAGE_DIR, filename)
-    if filename != CACHE_FILENAME and os.path.isfile(filepath):
+    filepath = os.path.join(_active_dir(), filename)
+    if filename not in RESERVED_NAMES and os.path.isfile(filepath):
         os.remove(filepath)
         return f"Deleted file '{filename}' successfully."
     else:
@@ -139,12 +158,12 @@ def get_history():
     return output.strip()
 
 def get_path():
-    return STORAGE_DIR
+    return _active_dir()
 
 def open_file(filename):
-    filepath = os.path.join(STORAGE_DIR, filename)
+    filepath = os.path.join(_active_dir(), filename)
 
-    if filename == CACHE_FILENAME or not os.path.isfile(filepath):
+    if filename in RESERVED_NAMES or not os.path.isfile(filepath):
         return f"Error: File '{filename}' not found."
 
     try:
@@ -159,17 +178,47 @@ def copy_file(args_string):
     if len(parts) < 2:
         return "Error: Use 'copy <src> <dest>'"
 
+    active_dir = _active_dir()
     src, dest = parts[0], parts[1]
-    src_path = os.path.join(STORAGE_DIR, src)
-    dest_path = os.path.join(STORAGE_DIR, dest)
+    src_path = os.path.join(active_dir, src)
+    dest_path = os.path.join(active_dir, dest)
 
-    if src == CACHE_FILENAME or not os.path.isfile(src_path):
+    if src in RESERVED_NAMES or not os.path.isfile(src_path):
         return f"Error: File '{src}' not found."
-    if dest == CACHE_FILENAME:
+    if dest in RESERVED_NAMES:
         return f"Error: '{dest}' is a reserved filename."
 
     shutil.copy(src_path, dest_path)
     return f"Copied '{src}' to '{dest}'."
+
+def publish_file(filename):
+    if current_user == SHELL_USER:
+        return "Error: You're already on the public 'shell' session."
+    if filename in RESERVED_NAMES:
+        return f"Error: '{filename}' is a reserved filename."
+
+    src_path = os.path.join(_active_dir(), filename)
+    if not os.path.isfile(src_path):
+        return f"Error: File '{filename}' not found."
+
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+    shutil.copy(src_path, os.path.join(STORAGE_DIR, filename))
+    return f"Published '{filename}' to the public TomFolder3000 (kept your private copy too)."
+
+def privatize_file(filename):
+    if current_user == SHELL_USER:
+        return "Error: Switch to (or create) an account first to have private storage."
+    if filename in RESERVED_NAMES:
+        return f"Error: '{filename}' is a reserved filename."
+
+    src_path = os.path.join(STORAGE_DIR, filename)
+    if not os.path.isfile(src_path):
+        return f"Error: File '{filename}' not found."
+
+    private_dir = _active_dir()
+    os.makedirs(private_dir, exist_ok=True)
+    shutil.copy(src_path, os.path.join(private_dir, filename))
+    return f"Copied '{filename}' to your private storage (kept the public copy too)."
 
 def rename_file(args_string):
     parts = args_string.split(maxsplit=1)
@@ -177,13 +226,14 @@ def rename_file(args_string):
     if len(parts) < 2:
         return "Error: Use 'rename <old> <new>'"
 
+    active_dir = _active_dir()
     old, new = parts[0], parts[1]
-    old_path = os.path.join(STORAGE_DIR, old)
-    new_path = os.path.join(STORAGE_DIR, new)
+    old_path = os.path.join(active_dir, old)
+    new_path = os.path.join(active_dir, new)
 
-    if old == CACHE_FILENAME or not os.path.isfile(old_path):
+    if old in RESERVED_NAMES or not os.path.isfile(old_path):
         return f"Error: File '{old}' not found."
-    if new == CACHE_FILENAME:
+    if new in RESERVED_NAMES:
         return f"Error: '{new}' is a reserved filename."
     if os.path.exists(new_path):
         return f"Error: File '{new}' already exists."
@@ -192,9 +242,9 @@ def rename_file(args_string):
     return f"Renamed '{old}' to '{new}'."
 
 def get_size(filename):
-    filepath = os.path.join(STORAGE_DIR, filename)
+    filepath = os.path.join(_active_dir(), filename)
 
-    if filename == CACHE_FILENAME or not os.path.isfile(filepath):
+    if filename in RESERVED_NAMES or not os.path.isfile(filepath):
         return f"Error: File '{filename}' not found."
 
     size_bytes = os.path.getsize(filepath)
@@ -203,12 +253,14 @@ def get_size(filename):
     return f"{filename}: {size_bytes / 1024:.2f} KB"
 
 def search_files(keyword):
-    if not os.path.isdir(STORAGE_DIR) or not _visible_files():
+    files = _visible_files()
+    if not files:
         return "No files to search."
 
+    active_dir = _active_dir()
     matches = []
-    for filename in _visible_files():
-        filepath = os.path.join(STORAGE_DIR, filename)
+    for filename in files:
+        filepath = os.path.join(active_dir, filename)
         if keyword.lower() in filename.lower():
             matches.append(filename)
             continue
@@ -278,12 +330,16 @@ def help():
         "Available commands:\n"
         "  show <text>          - Print the text\n"
         "  create <filename> <content> - Create a file with content\n"
-        "  list                 - List all files in TomFolder3000\n"
+        "  list                 - List your files (public in 'shell', private per account)\n"
         "  view <filename>      - Show the contents of a file\n"
-        "  edit <filename>      - Open the line editor for a file\n"
+        "  edit <filename>      - Open a full-screen text editor for a file\n"
+        "                         (arrows/Home/End to move, Backspace/Del to remove,\n"
+        "                         Ctrl+O to save, Ctrl+X to save and exit)\n"
         "  expr <expression>    - Evaluate a math expression\n"
         "  delete <filename>    - Delete a file\n"
         "  copy <src> <dest>    - Copy a file\n"
+        "  public <filename>    - Copy a private file to the public TomFolder3000\n"
+        "  private <filename>   - Copy a public file to your private storage\n"
         "  rename <old> <new>   - Rename a file\n"
         "  size <filename>      - Show a file's size\n"
         "  search <keyword>     - Search filenames and contents for a keyword\n"

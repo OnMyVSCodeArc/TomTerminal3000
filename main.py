@@ -1,6 +1,7 @@
 import sys
 import getpass
-import commands
+import curses
+from core import commands, editor
 
 def prompt_password(prompt):
     if sys.stdin.isatty():
@@ -53,19 +54,10 @@ while True:
             if error:
                 print(error)
             else:
-                print("EDITOR")
-                for line in lines:
-                    print(line)
-                while True:
-                    try:
-                        line = input()
-                    except EOFError:
-                        break
-                    if line.strip().lower() == "exit editor":
-                        break
-                    if line == "":
-                        continue
-                    lines.append(line)
+                def do_save(current_lines):
+                    return commands.save_edit(filename, current_lines)
+
+                curses.wrapper(editor.run_editor, filename, lines, do_save)
                 print(commands.save_edit(filename, lines))
         
     elif cmd == "expr":
@@ -137,6 +129,18 @@ while True:
         else:
             response = commands.copy_file(args)
             print(response)
+
+    elif cmd == "public":
+        if not args:
+            print("Error: Missing filename.")
+        else:
+            print(commands.publish_file(args))
+
+    elif cmd == "private":
+        if not args:
+            print("Error: Missing filename.")
+        else:
+            print(commands.privatize_file(args))
 
     elif cmd == "rename":
         if not args:

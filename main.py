@@ -43,6 +43,30 @@ while True:
         else:
             response = commands.view_file(args)
             print(response)
+
+    elif cmd == "edit":
+        if not args:
+            print("Error: Missing filename.")
+        else:
+            filename = args
+            lines, error = commands.read_for_edit(filename)
+            if error:
+                print(error)
+            else:
+                print("EDITOR")
+                for line in lines:
+                    print(line)
+                while True:
+                    try:
+                        line = input()
+                    except EOFError:
+                        break
+                    if line.strip().lower() == "exit editor":
+                        break
+                    if line == "":
+                        continue
+                    lines.append(line)
+                print(commands.save_edit(filename, lines))
         
     elif cmd == "expr":
         if not args:

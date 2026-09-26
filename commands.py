@@ -85,6 +85,27 @@ def view_file(filename):
     except UnicodeDecodeError:
         return f"Error: Cannot view '{filename}' as text (it may be an image, video, or other binary file)."
 
+def read_for_edit(filename):
+    if filename == CACHE_FILENAME:
+        return None, f"Error: '{filename}' is a reserved filename."
+
+    filepath = os.path.join(STORAGE_DIR, filename)
+    if not os.path.isfile(filepath):
+        return [], None
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read().splitlines(), None
+    except UnicodeDecodeError:
+        return None, f"Error: Cannot edit '{filename}' as text (it may be an image, video, or other binary file)."
+
+def save_edit(filename, lines):
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+    filepath = os.path.join(STORAGE_DIR, filename)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    return f"Saved '{filename}' successfully."
+
 def calculate(expression_string):
     try:
         return str(sympify(expression_string))
@@ -259,6 +280,7 @@ def help():
         "  create <filename> <content> - Create a file with content\n"
         "  list                 - List all files in TomFolder3000\n"
         "  view <filename>      - Show the contents of a file\n"
+        "  edit <filename>      - Open the line editor for a file\n"
         "  expr <expression>    - Evaluate a math expression\n"
         "  delete <filename>    - Delete a file\n"
         "  copy <src> <dest>    - Copy a file\n"

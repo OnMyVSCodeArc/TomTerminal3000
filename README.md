@@ -38,13 +38,13 @@ Only `main.py` sits at the top level; everything else lives in `core/` so new mo
 
 ## Storage
 
-Files created with `create` are written to a real folder on disk:
+Files created with `create` are written to a real folder next to the app itself:
 
 ```
-Documents/TomFolder3000/
+TomTerminal3000/TomFolder3000/
 ```
 
-The folder is created automatically the first time you run `create`. Commands like `list`, `view`, `edit`, `copy`, `rename`, `size`, `search`, `open`, and `delete` all operate on files in this folder — **which one depends on who you're signed in as**:
+(shown by the `path` command). The folder is created automatically the first time you run `create`, and is git-ignored since it's per-install runtime data, not source. Commands like `list`, `view`, `edit`, `copy`, `rename`, `size`, `search`, `open`, and `delete` all operate on files in this folder — **which one depends on who you're signed in as**:
 
 - On the temporary `shell` session, files are **public** and live directly in `TomFolder3000/`.
 - On a real account, files are **private** and live in `TomFolder3000/accounts/<name>/` — invisible and inaccessible from `shell` or any other account.

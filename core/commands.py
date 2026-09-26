@@ -5,7 +5,8 @@ import hashlib
 from datetime import datetime
 from sympy import sympify
 
-STORAGE_DIR = os.path.join(os.path.expanduser("~"), "Documents", "TomFolder3000")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STORAGE_DIR = os.path.join(PROJECT_ROOT, "TomFolder3000")
 CACHE_FILENAME = ".terminal_cache.json"
 CACHE_FILE = os.path.join(STORAGE_DIR, CACHE_FILENAME)
 ACCOUNTS_DIRNAME = "accounts"
